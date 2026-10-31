@@ -1,0 +1,4 @@
+-e 
+*-debug.log
+firestore-debug.log
+firebase-debug.log

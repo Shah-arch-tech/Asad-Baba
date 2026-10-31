@@ -1,0 +1,164 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Default-deny global safety net
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() > 0 && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function isAdmin() {
+      return isSignedIn() && (
+        (request.auth.token.email == 'asyed6138@gmail.com' && request.auth.token.email_verified == true) ||
+        exists(/databases/$(database)/documents/admins/$(request.auth.uid))
+      );
+    }
+
+    // Validation Helpers
+    function isValidUser(data) {
+      return data.userId is string && data.userId.size() > 0 && data.userId.size() <= 128 &&
+             data.email is string && data.email.size() > 0 && data.email.size() <= 256 &&
+             (!('displayName' in data) || (data.displayName is string && data.displayName.size() <= 128)) &&
+             data.role in ['admin', 'staff'] &&
+             data.createdAt is timestamp && data.createdAt <= request.time &&
+             data.updatedAt is timestamp && data.updatedAt <= request.time;
+    }
+
+    function isValidPurchase(data) {
+      return data.userId is string && data.userId.size() > 0 && data.userId.size() <= 128 &&
+             data.name is string && data.name.size() > 0 && data.name.size() <= 256 &&
+             (!('company' in data) || (data.company is string && data.company.size() <= 256)) &&
+             data.qty is int && data.qty > 0 &&
+             (data.purchase is number && data.purchase >= 0) &&
+             (data.sale is number && data.sale >= 0) &&
+             data.date is string && data.date.size() <= 32 &&
+             (!('batch' in data) || (data.batch is string && data.batch.size() <= 64)) &&
+             (!('expiry' in data) || (data.expiry is string && data.expiry.size() <= 32)) &&
+             (!('shelf' in data) || (data.shelf is string && data.shelf.size() <= 64)) &&
+             (data.total is number && data.total >= 0) &&
+             data.createdAt is timestamp && data.createdAt <= request.time &&
+             data.updatedAt is timestamp && data.updatedAt <= request.time;
+    }
+
+    function isValidDailySale(data) {
+      return data.userId is string && data.userId.size() > 0 && data.userId.size() <= 128 &&
+             data.date is string && data.date.size() > 0 && data.date.size() <= 32 &&
+             (data.amount is number && data.amount >= 0) &&
+             data.createdAt is timestamp && data.createdAt <= request.time &&
+             data.updatedAt is timestamp && data.updatedAt <= request.time;
+    }
+
+    function isValidExpense(data) {
+      return data.userId is string && data.userId.size() > 0 && data.userId.size() <= 128 &&
+             data.date is string && data.date.size() > 0 && data.date.size() <= 32 &&
+             data.category in ['Electricity', 'Rent', 'Salary', 'Transport', 'Other'] &&
+             (data.amount is number && data.amount > 0) &&
+             (!('note' in data) || (data.note is string && data.note.size() <= 500)) &&
+             data.createdAt is timestamp && data.createdAt <= request.time &&
+             data.updatedAt is timestamp && data.updatedAt <= request.time;
+    }
+
+    function isValidCashSetting(data) {
+      return data.userId is string && data.userId.size() > 0 && data.userId.size() <= 128 &&
+             (data.openingCash is number && data.openingCash >= 0) &&
+             data.updatedAt is timestamp && data.updatedAt <= request.time;
+    }
+
+    // Collection Rules
+    match /users/{userId} {
+      allow get: if isSignedIn() && (request.auth.uid == userId || isAdmin());
+      allow list: if isSignedIn() && (resource.data.userId == request.auth.uid || isAdmin());
+      allow create: if isSignedIn() &&
+                       isValidId(userId) &&
+                       request.auth.uid == userId &&
+                       incoming().userId == request.auth.uid &&
+                       incoming().keys().hasAll(['userId', 'email', 'role', 'createdAt', 'updatedAt']) &&
+                       isValidUser(incoming());
+      allow update: if isSignedIn() &&
+                       isValidId(userId) &&
+                       (request.auth.uid == userId || isAdmin()) &&
+                       incoming().userId == existing().userId &&
+                       incoming().createdAt == existing().createdAt &&
+                       isValidUser(incoming()) &&
+                       incoming().diff(existing()).affectedKeys().hasOnly(['displayName', 'email', 'role', 'updatedAt']);
+      allow delete: if false;
+    }
+
+    match /purchases/{purchaseId} {
+      allow get, list: if isSignedIn() && resource.data.userId == request.auth.uid;
+      allow create: if isSignedIn() &&
+                       isValidId(purchaseId) &&
+                       incoming().userId == request.auth.uid &&
+                       incoming().keys().hasAll(['userId', 'name', 'qty', 'purchase', 'sale', 'date', 'total', 'createdAt', 'updatedAt']) &&
+                       isValidPurchase(incoming());
+      allow update: if isSignedIn() &&
+                       isValidId(purchaseId) &&
+                       resource.data.userId == request.auth.uid &&
+                       incoming().userId == existing().userId &&
+                       incoming().createdAt == existing().createdAt &&
+                       isValidPurchase(incoming()) &&
+                       incoming().diff(existing()).affectedKeys().hasOnly(['name', 'company', 'qty', 'purchase', 'sale', 'date', 'batch', 'expiry', 'shelf', 'total', 'updatedAt']);
+      allow delete: if isSignedIn() && isValidId(purchaseId) && resource.data.userId == request.auth.uid;
+    }
+
+    match /daily_sales/{saleId} {
+      allow get, list: if isSignedIn() && resource.data.userId == request.auth.uid;
+      allow create: if isSignedIn() &&
+                       isValidId(saleId) &&
+                       incoming().userId == request.auth.uid &&
+                       incoming().keys().hasAll(['userId', 'date', 'amount', 'createdAt', 'updatedAt']) &&
+                       isValidDailySale(incoming());
+      allow update: if isSignedIn() &&
+                       isValidId(saleId) &&
+                       resource.data.userId == request.auth.uid &&
+                       incoming().userId == existing().userId &&
+                       incoming().createdAt == existing().createdAt &&
+                       isValidDailySale(incoming()) &&
+                       incoming().diff(existing()).affectedKeys().hasOnly(['date', 'amount', 'updatedAt']);
+      allow delete: if isSignedIn() && isValidId(saleId) && resource.data.userId == request.auth.uid;
+    }
+
+    match /expenses/{expenseId} {
+      allow get, list: if isSignedIn() && resource.data.userId == request.auth.uid;
+      allow create: if isSignedIn() &&
+                       isValidId(expenseId) &&
+                       incoming().userId == request.auth.uid &&
+                       incoming().keys().hasAll(['userId', 'date', 'category', 'amount', 'createdAt', 'updatedAt']) &&
+                       isValidExpense(incoming());
+      allow update: if isSignedIn() &&
+                       isValidId(expenseId) &&
+                       resource.data.userId == request.auth.uid &&
+                       incoming().userId == existing().userId &&
+                       incoming().createdAt == existing().createdAt &&
+                       isValidExpense(incoming()) &&
+                       incoming().diff(existing()).affectedKeys().hasOnly(['date', 'category', 'amount', 'note', 'updatedAt']);
+      allow delete: if isSignedIn() && isValidId(expenseId) && resource.data.userId == request.auth.uid;
+    }
+
+    match /cash_settings/{userId} {
+      allow get, list: if isSignedIn() && (request.auth.uid == userId || resource.data.userId == request.auth.uid);
+      allow create, update: if isSignedIn() &&
+                               isValidId(userId) &&
+                               request.auth.uid == userId &&
+                               incoming().userId == request.auth.uid &&
+                               isValidCashSetting(incoming());
+      allow delete: if false;
+    }
+  }
+}

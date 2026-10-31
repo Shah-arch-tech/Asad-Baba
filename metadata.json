@@ -1,0 +1,8 @@
+{
+  "name": "Remix Shah-pharmacy-apk",
+  "description": "Imported from GitHub: Shah-arch-tech/Shah-pharmacy-apk",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}

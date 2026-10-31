@@ -1,0 +1,102 @@
+{
+  "entities": {
+    "User": {
+      "title": "User",
+      "description": "User profile and permissions in Shah Pharmacy.",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string", "description": "The Google Auth UID of the user." },
+        "displayName": { "type": "string", "description": "The user's display name." },
+        "email": { "type": "string", "description": "The user's email address." },
+        "role": { "type": "string", "enum": ["admin", "staff"], "description": "User role." },
+        "createdAt": { "type": "string", "format": "date-time", "description": "Server timestamp of creation." },
+        "updatedAt": { "type": "string", "format": "date-time", "description": "Server timestamp of last update." }
+      },
+      "required": ["userId", "email", "role", "createdAt", "updatedAt"]
+    },
+    "Purchase": {
+      "title": "Purchase",
+      "description": "Medicine inventory purchase record.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "description": "Document ID." },
+        "userId": { "type": "string", "description": "The owner user ID." },
+        "name": { "type": "string", "description": "Medicine name." },
+        "company": { "type": "string", "description": "Manufacturer or pharmaceutical company." },
+        "qty": { "type": "integer", "description": "Quantity purchased." },
+        "purchase": { "type": "number", "description": "Purchase price per unit." },
+        "sale": { "type": "number", "description": "Sale price per unit." },
+        "date": { "type": "string", "description": "Purchase date (YYYY-MM-DD)." },
+        "batch": { "type": "string", "description": "Batch number." },
+        "expiry": { "type": "string", "description": "Expiry date (YYYY-MM-DD)." },
+        "total": { "type": "number", "description": "Total purchase cost (qty * purchase)." },
+        "createdAt": { "type": "string", "format": "date-time", "description": "Server timestamp of creation." },
+        "updatedAt": { "type": "string", "format": "date-time", "description": "Server timestamp of last update." }
+      },
+      "required": ["userId", "name", "qty", "purchase", "sale", "date", "total", "createdAt", "updatedAt"]
+    },
+    "DailySale": {
+      "title": "DailySale",
+      "description": "End of day total sales revenue entry.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "description": "Document ID." },
+        "userId": { "type": "string", "description": "The owner user ID." },
+        "date": { "type": "string", "description": "Date of sale (YYYY-MM-DD)." },
+        "amount": { "type": "number", "description": "Total sale amount in PKR." },
+        "createdAt": { "type": "string", "format": "date-time", "description": "Server timestamp of creation." },
+        "updatedAt": { "type": "string", "format": "date-time", "description": "Server timestamp of last update." }
+      },
+      "required": ["userId", "date", "amount", "createdAt", "updatedAt"]
+    },
+    "Expense": {
+      "title": "Expense",
+      "description": "Operating expense record.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "description": "Document ID." },
+        "userId": { "type": "string", "description": "The owner user ID." },
+        "date": { "type": "string", "description": "Expense date (YYYY-MM-DD)." },
+        "category": { "type": "string", "enum": ["Electricity", "Rent", "Salary", "Transport", "Other"], "description": "Expense category." },
+        "amount": { "type": "number", "description": "Expense amount in PKR." },
+        "note": { "type": "string", "description": "Optional description or note." },
+        "createdAt": { "type": "string", "format": "date-time", "description": "Server timestamp of creation." },
+        "updatedAt": { "type": "string", "format": "date-time", "description": "Server timestamp of last update." }
+      },
+      "required": ["userId", "date", "category", "amount", "createdAt", "updatedAt"]
+    },
+    "CashSetting": {
+      "title": "CashSetting",
+      "description": "Cash in hand settings and opening cash balance.",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string", "description": "The owner user ID." },
+        "openingCash": { "type": "number", "description": "Opening cash balance in PKR." },
+        "updatedAt": { "type": "string", "format": "date-time", "description": "Server timestamp of last update." }
+      },
+      "required": ["userId", "openingCash", "updatedAt"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": "User",
+      "description": "User accounts, roles, and profile info."
+    },
+    "/purchases/{purchaseId}": {
+      "schema": "Purchase",
+      "description": "Medicine purchase transactions and inventory stock entries."
+    },
+    "/daily_sales/{saleId}": {
+      "schema": "DailySale",
+      "description": "Day-end total pharmacy revenue records."
+    },
+    "/expenses/{expenseId}": {
+      "schema": "Expense",
+      "description": "Pharmacy operational expenses categorized."
+    },
+    "/cash_settings/{userId}": {
+      "schema": "CashSetting",
+      "description": "User-specific opening cash configuration."
+    }
+  }
+}
